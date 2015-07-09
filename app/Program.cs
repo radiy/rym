@@ -74,7 +74,6 @@ namespace rym
 
 		public static void Main(string[] args)
 		{
-			Thread.CurrentThread.CurrentCulture = CultureInfo.InvariantCulture;
 			try {
 				var isDebug = false;
 				var typeReg = new Regex(@".+\.Tasks\..+");

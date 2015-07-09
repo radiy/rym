@@ -4,11 +4,13 @@ using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Configuration;
 using System.Configuration.Internal;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Text;
 using System.Text.RegularExpressions;
+using System.Threading;
 using GlobDir;
 using Inflector;
 using NDesk.Options;
@@ -47,11 +49,32 @@ namespace rym
 		public bool SupportsUserConfig { get; private set; }
 	}
 
-
 	public class Program
 	{
+		private static Dictionary<CultureInfo, Dictionary<string, string>> map =
+			new Dictionary<CultureInfo, Dictionary<string, string>> {
+				{ CultureInfo.GetCultureInfo("ru-RU"),
+					new Dictionary<string, string> {
+						{"by default", "по умолчанию"},
+						{"Error on assembly '{0}' loading", "Ошибка при загрузке сборки {0}"},
+						{"Config file not found, search masks {0}", "Не удалось найти конфигурационный файл, пробовал найти по маскам {0}"},
+						{"Config file {0} loading", "Загружаю конфигурационный файл {0}"},
+					}}
+			};
+
+		public static string i18n(string text)
+		{
+			if (map.ContainsKey(CultureInfo.CurrentCulture)) {
+				var keys = map[CultureInfo.CurrentCulture];
+				if (keys.ContainsKey(text))
+					return keys[text];
+			}
+			return text;
+		}
+
 		public static void Main(string[] args)
 		{
+			Thread.CurrentThread.CurrentCulture = CultureInfo.InvariantCulture;
 			try {
 				var isDebug = false;
 				var typeReg = new Regex(@".+\.Tasks\..+");
@@ -65,12 +88,12 @@ namespace rym
 
 				var rootOptions = new OptionSet {
 					{"debug", v => isDebug = v != null},
-					{"bin=", String.Format("По умолчанию: {0}", binPattern), v => binPattern = v},
+					{"bin=", String.Format(i18n("by default") + ": {0}", binPattern), v => binPattern = v},
 					{"config=", v => appConfig = new[] { v }},
 					{"work-dir=", v => workDir = v},
-					{"f|procfile=", String.Format("По умолчанию: {0}", procfile), v => procfile = v},
+					{"f|procfile=", String.Format(i18n("by default") + ": {0}", procfile), v => procfile = v},
 					{"h|help", v => help = v != null},
-					{"typeReg", String.Format("По умолчанию: {0}", typeReg), v => typeReg = new Regex(v)},
+					{"typeReg", String.Format(i18n("by default") + ": {0}", typeReg), v => typeReg = new Regex(v)},
 				};
 				var cliArgs = rootOptions.Parse(args);
 				if (help) {
@@ -108,7 +131,7 @@ namespace rym
 						return result;
 					}
 					catch(Exception e) {
-						Console.Error.WriteLine("Ошибка при загрузке сборки {0}", eventArgs.Name);
+						Console.Error.WriteLine(i18n("Error on assembly '{0}' loading"), eventArgs.Name);
 						Console.Error.WriteLine(e);
 						throw;
 					}
@@ -124,13 +147,13 @@ namespace rym
 
 				if (config == null) {
 					if (isDebug) {
-						Console.WriteLine("Не удалось найти конфигурационный файл, пробовал найти по маскам {0} и {1}",
+						Console.WriteLine(i18n("Config file not found, search masks {0}"),
 							String.Join(", ", appConfig));
 					}
 				}
 				else {
 					if (isDebug) {
-						Console.WriteLine("Загружаю конфигурационный файл {0}", config);
+						Console.WriteLine(i18n("Config file {0} loading"), config);
 					}
 					var conf = ConfigurationManager.OpenMappedExeConfiguration(new ExeConfigurationFileMap {
 						ExeConfigFilename = config

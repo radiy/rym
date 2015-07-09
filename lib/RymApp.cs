@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Configuration;
 using System.Diagnostics;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Reflection;
@@ -17,6 +18,55 @@ namespace Rym
 {
 	public class RymApp
 	{
+		private static Dictionary<CultureInfo, Dictionary<string, string>> map =
+			new Dictionary<CultureInfo, Dictionary<string, string>> {
+				{ CultureInfo.GetCultureInfo("ru-RU"), new Dictionary<string, string> {
+						{"task-not-found", "Не смог найти задачу {0}, попробуй '{1} help' что бы посмотреть все доступные задачи"},
+						{ "help-header", "Использование: [ОПЦИИ] [ЗАДАЧА] [ПОДЗАДАЧА] [АРГУМЕНТЫ]" + Environment.NewLine
+							+ "Для получения подробной информации о задаче - '{0} help {{ЗАДАЧА}} [ПОДЗАДАЧА]'" + Environment.NewLine
+							+ "Опции:"},
+						{ "help-help", "Задачи:" + Environment.NewLine +
+							"  {0} help [ЗАДАЧА] [ПОДЗАДАЧА] # Выводит информацию о всех задачах или о заданной задаче"},
+						{"help-footer", "Аргументы:" + Environment.NewLine
+							+ "  параметры для задачи могут передаваться в двух формах:" + Environment.NewLine
+							+ "    позиционной - ЗАДАЧА ПАРАМЕТР1 ПАРАМЕТР2" + Environment.NewLine
+							+ "    не позиционной - ЗАДАЧА --ИМЯ-ПАРАМЕТРА1=ПАРАМЕТР1 --ИМЯ-ПАРАМЕТРА2=ПАРАМЕТР2" + Environment.NewLine
+							+ "    или смешанной ЗАДАЧА --ИМЯ-ПАРАМЕТРА1=ПАРАМЕТР1 ПАРАМЕТР2" + Environment.NewLine
+							+ "    параметры в фигурных скобках являются обязательными - {ПАРАМЕТР1}" + Environment.NewLine
+							+ "    параметры в квадратных скобках являются опциональными - [ПАРАМЕТР1]"},
+				}},
+				{ CultureInfo.InvariantCulture, new Dictionary<string, string> {
+					{ "task-not-found", "Task {0} not found, try '{1} help' to show all posible tasks" },
+					{ "help-header", "Usage: [OPTIONS] [TASK] [SUBTASK] [PARAMETERS]" + Environment.NewLine
+						+ "For detail information about task - '{0} help {{TASK}} [SUBTASK]'" + Environment.NewLine
+						+ "Options:"},
+					{ "help-help", "Tasks:" + Environment.NewLine +
+						"  {0} help [TASK] [SUBTASK] # show details information about task or subtask"},
+					{"help-footer", "Parameters:" + Environment.NewLine
+						+ "  task accepts parameters in forms described below:" + Environment.NewLine
+						+ "    positional - TASK PARAMETER1 PARAMETER2" + Environment.NewLine
+						+ "    named - TASK --PARAMETER-NAME1=PARAMETER1 --PARAMETER-NAME2=PARAMETER2" + Environment.NewLine
+						+ "    or mixed TASK --PARAMETER-NAME1=PARAMETER1 PARAMETER2" + Environment.NewLine
+						+ "    value is curly braces are mandatory - {PARAMETER1}" + Environment.NewLine
+						+ "    value is square braces are optional - [PARAMETER1]"},
+				}}
+			};
+
+		public static string i18n(string text)
+		{
+			return i18n(text, CultureInfo.CurrentCulture) ?? i18n(text, CultureInfo.InvariantCulture) ?? text;
+		}
+
+		private static string i18n(string text, CultureInfo culture)
+		{
+			if (map.ContainsKey(culture)) {
+				var keys = map[culture];
+				if (keys.ContainsKey(text))
+					return keys[text];
+			}
+			return null;
+		}
+
 		private CancellationTokenSource source;
 
 		protected ILog Log;
@@ -218,20 +268,11 @@ namespace Rym
 
 		public static void ShortHelp(Tuple<Type, MethodInfo>[] tuples, OptionSet options)
 		{
-			Console.WriteLine("Использование: [ОПЦИИ] [ЗАДАЧА] [ПОДЗАДАЧА] [АРГУМЕНТЫ]");
-			Console.WriteLine("Для получения подробной информации о задаче - '{0} help {{ЗАДАЧА}} [ПОДЗАДАЧА]'", app);
-			Console.WriteLine("Опции:");
+			Console.WriteLine(i18n("help-header"), app);
 			options.WriteOptionDescriptions(Console.Out);
-			Console.WriteLine("Задачи:");
-			Console.WriteLine("  {0} help [ЗАДАЧА] [ПОДЗАДАЧА] # Выводит информацию о всех задачах или о заданной задаче", app);
+			Console.WriteLine(i18n("help-help"), app);
 			DescribeTasks(tuples);
-			Console.WriteLine("Аргументы:");
-			Console.WriteLine("  параметры для задачи могут передаваться в двух формах:");
-			Console.WriteLine("    позиционной - ЗАДАЧА ПАРАМЕТР1 ПАРАМЕТР2");
-			Console.WriteLine("    не позиционной - ЗАДАЧА --ИМЯ-ПАРАМЕТРА1=ПАРАМЕТР1 --ИМЯ-ПАРАМЕТРА2=ПАРАМЕТР2");
-			Console.WriteLine("    или смешанной ЗАДАЧА --ИМЯ-ПАРАМЕТРА1=ПАРАМЕТР1 ПАРАМЕТР2");
-			Console.WriteLine("    параметры в фигурных скобках являются обязательными - {ПАРАМЕТР1}");
-			Console.WriteLine("    параметры в квадратных скобках являются опциональными - [ПАРАМЕТР1]");
+			Console.WriteLine(i18n("help-footer"));
 		}
 
 		public static void LongDescribe(Tuple<Type, MethodInfo> tuple)
@@ -319,8 +360,8 @@ namespace Rym
 
 			if (runTuple == null) {
 				Console.WriteLine(
-					"Не смог найти задачу {0}, попробуй help что бы посмотреть все доступные задачи",
-					String.Join(" ", originArgs));
+					i18n("task-not-found"),
+					String.Join(" ", originArgs), app);
 				return null;
 			}
 

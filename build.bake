@@ -1,0 +1,20 @@
+task "default", ["build"]
+
+task "clean":
+	RmDir("output", true)
+
+task "build", ["clean", "assembly:info:generate"]:
+	MkDir("output")
+	MkDir("output/tools")
+	MkDir("output/lib/")
+	MkDir("output/lib/net45")
+	Bash("msbuild.exe -p:Configuration=release -p:AssemblyName=Rym -t:lib")
+	Cp("lib/bin/release/rym.*", "output/lib/net45")
+	Bash("msbuild.exe -p:Configuration=release -t:app")
+	Cp("app/bin/release/*", "output/tools")
+	Sh("nuget pack nuget.nuspec -basepath output -version ${Globals.Version}")
+
+task "nuget:publish", ["build", "version:bump"]:
+	for f in FileSet("*.nupkg").Files:
+		Sh("nuget push $f -Source local")
+		Rm(f)

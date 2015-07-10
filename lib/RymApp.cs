@@ -21,7 +21,9 @@ namespace Rym
 		private static Dictionary<CultureInfo, Dictionary<string, string>> map =
 			new Dictionary<CultureInfo, Dictionary<string, string>> {
 				{ CultureInfo.GetCultureInfo("ru-RU"), new Dictionary<string, string> {
-						{"task-not-found", "Не смог найти задачу {0}, попробуй '{1} help' что бы посмотреть все доступные задачи"},
+						{"error-task-not-found", "Не смог найти задачу {0}, попробуй '{1} help' что бы посмотреть все доступные задачи"},
+						{"error-parameters-required", "Не заполнены обязательные параметры"},
+						{"error-parameters-not-found", "Не заданы параметры для запуска задачи"},
 						{ "help-header", "Использование: [ОПЦИИ] [ЗАДАЧА] [ПОДЗАДАЧА] [АРГУМЕНТЫ]" + Environment.NewLine
 							+ "Для получения подробной информации о задаче - '{0} help {{ЗАДАЧА}} [ПОДЗАДАЧА]'" + Environment.NewLine
 							+ "Опции:"},
@@ -36,7 +38,9 @@ namespace Rym
 							+ "    параметры в квадратных скобках являются опциональными - [ПАРАМЕТР1]"},
 				}},
 				{ CultureInfo.InvariantCulture, new Dictionary<string, string> {
-					{ "task-not-found", "Task {0} not found, try '{1} help' to show all posible tasks" },
+					{ "error-task-not-found", "Task {0} not found, try '{1} help' to show all posible tasks" },
+					{ "error-parameters-required", "Mandatory parameters not found" },
+					{ "error-parameters-not-found", "Parameters not specified" },
 					{ "help-header", "Usage: [OPTIONS] [TASK] [SUBTASK] [PARAMETERS]" + Environment.NewLine
 						+ "For detail information about task - '{0} help {{TASK}} [SUBTASK]'" + Environment.NewLine
 						+ "Options:"},
@@ -47,8 +51,8 @@ namespace Rym
 						+ "    positional - TASK PARAMETER1 PARAMETER2" + Environment.NewLine
 						+ "    named - TASK --PARAMETER-NAME1=PARAMETER1 --PARAMETER-NAME2=PARAMETER2" + Environment.NewLine
 						+ "    or mixed TASK --PARAMETER-NAME1=PARAMETER1 PARAMETER2" + Environment.NewLine
-						+ "    value is curly braces are mandatory - {PARAMETER1}" + Environment.NewLine
-						+ "    value is square braces are optional - [PARAMETER1]"},
+						+ "    value in curly braces are mandatory - {PARAMETER1}" + Environment.NewLine
+						+ "    value in square braces are optional - [PARAMETER1]"},
 				}}
 			};
 
@@ -220,7 +224,7 @@ namespace Rym
 				.Where(p => !p.Item1.HasDefaultValue && dummy[p.Item2] == null)
 				.ToArray();
 			if (positioned.Count != notFilled.Length) {
-				Console.WriteLine("Не заполнены обязательные параметры");
+				Console.WriteLine(i18n("error-parameters-required"));
 				options.WriteOptionDescriptions(Console.Out);
 				return true;
 			}
@@ -230,7 +234,7 @@ namespace Rym
 			}
 
 			if (parameters.Where(p => !p.HasDefaultValue).Select((p, i) => dummy[i]).Any(v => v == null)) {
-				Console.WriteLine("Не заданы параметры для запуска задачи");
+				Console.WriteLine(i18n("error-parameters-not-found"));
 				options.WriteOptionDescriptions(Console.Out);
 				return true;
 			}
@@ -360,7 +364,7 @@ namespace Rym
 
 			if (runTuple == null) {
 				Console.WriteLine(
-					i18n("task-not-found"),
+					i18n("error-task-not-found"),
 					String.Join(" ", originArgs), app);
 				return null;
 			}

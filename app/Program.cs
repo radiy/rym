@@ -88,11 +88,11 @@ namespace rym
 
 		public static void Main(string[] args)
 		{
-			Thread.CurrentThread.CurrentCulture = CultureInfo.InvariantCulture;
 			try {
 				var isDebug = false;
 				var typeReg = new Regex(@".+\.Tasks\..+");
-				var binPattern = "src/*.Tasks/bin/debug/*.dll";
+				var defaultBinPatterns = new List<string> { "src/*.Tasks/bin/debug/*.dll" };
+				var binPatterns = new List<string>();
 				var appConfig = new [] { "**/{0}/app.config", "**/{0}/web.config" };
 				RymApp.DefaultMethod = "Execute";
 				var ignoreMethods = new [] {"Dispose"};
@@ -102,7 +102,7 @@ namespace rym
 
 				var rootOptions = new OptionSet {
 					{"debug", v => isDebug = v != null},
-					{"bin=", String.Format(i18n("default") + ": {0}", binPattern), v => binPattern = v},
+					{"bin=", String.Format(i18n("default") + ": {0}", String.Join(", ",defaultBinPatterns)), v => binPatterns.Add(v)},
 					{"config=", v => appConfig = new[] { v }},
 					{"work-dir=", v => workDir = v},
 					{"f|procfile=", String.Format(i18n("default") + ": {0}", procfile), v => procfile = v},
@@ -114,19 +114,21 @@ namespace rym
 					rootOptions.WriteOptionDescriptions(Console.Out);
 					return;
 				}
+				if (binPatterns.Count == 0)
+					binPatterns = defaultBinPatterns;
 
 				var regex = new Regex(@"^\s*#");
 				if (File.Exists(procfile)) {
 					rootOptions.Parse(File.ReadLines(procfile).Where(l => !regex.IsMatch(l)).Select(l => "--" + l));
 				}
 
-				var files = Glob.GetMatches(binPattern, Glob.Constants.IgnoreCase).ToList();
+				var files = binPatterns.SelectMany(x => Glob.GetMatches(x, Glob.Constants.IgnoreCase)).ToList();
 
 				//нужно хранить абсолютные пути на случай если
 				//текущая директория будет модифицирована
 				var assemblyLookup = files.SelectMany(f => Directory.GetFiles(Path.GetDirectoryName(f)))
 					.GroupBy(f => Path.GetFileNameWithoutExtension(f))
-					.ToDictionary(f => f.Key, f => Path.GetFullPath(f.FirstOrDefault()),
+					.ToLookup(f => f.Key, f => Path.GetFullPath(f.FirstOrDefault()),
 						StringComparer.CurrentCultureIgnoreCase);
 
 				AppDomain.CurrentDomain.AssemblyResolve += (sender, eventArgs) => {
@@ -134,7 +136,8 @@ namespace rym
 						var filename = "";
 						Assembly result = null;
 						var name = new AssemblyName(eventArgs.Name);
-						if (assemblyLookup.TryGetValue(name.Name, out filename)) {
+						filename = assemblyLookup[name.Name].FirstOrDefault();
+						if (!String.IsNullOrEmpty(filename)) {
 							result = Assembly.LoadFrom(filename);
 						}
 						if (isDebug)

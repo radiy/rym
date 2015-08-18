@@ -119,7 +119,7 @@ namespace rym
 
 				var regex = new Regex(@"^\s*#");
 				if (File.Exists(procfile)) {
-					rootOptions.Parse(File.ReadLines(procfile).Where(l => !regex.IsMatch(l)).Select(l => "--" + l));
+					rootOptions.Parse(File.ReadLines(procfile).Where(l => !regex.IsMatch(l)).Select(l => "--" + l.TrimStart('-')));
 				}
 
 				var files = binPatterns.SelectMany(x => Glob.GetMatches(x, Glob.Constants.IgnoreCase)).ToList();
